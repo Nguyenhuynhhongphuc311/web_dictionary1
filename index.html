@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Từ Điển Anh - Việt</title>
+    <!-- Tải Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Cấu hình font Inter -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@100..900&display=swap');
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f4f7f9; /* Nền sáng nhẹ */
+        }
+        /* Style cho từ khóa được highlight, sử dụng <mark> */
+        mark {
+            background-color: #fce38a; /* Màu vàng nhạt nổi bật */
+            color: #111827; /* Màu chữ đen đậm */
+            font-weight: 600;
+            padding: 1px 3px;
+            border-radius: 4px;
+        }
+        /* Style cho link từ khóa trong câu ví dụ */
+        .example a {
+            color: #2563eb; /* Màu xanh dương đậm */
+            text-decoration: none;
+            font-weight: 600;
+        }
+        .example a:hover {
+            text-decoration: underline;
+        }
+        /* Đảm bảo hiển thị phiên âm rõ ràng */
+        .pronunciation {
+            font-family: 'Times New Roman', 'Arial', monospace;
+            font-size: 1.25rem; /* text-xl */
+            color: #4b5563;
+            font-style: italic;
+            font-weight: 500;
+            margin-left: 0.5rem;
+        }
+        .pronunciation.missing {
+            color: #b91c1c; /* Màu đỏ cảnh báo */
+            font-size: 0.875rem; /* text-sm */
+            font-style: italic;
+        }
+    </style>
+</head>
+<body class="p-4 sm:p-8">
+
+    <div class="max-w-4xl mx-auto">
+        
+        <!-- Header -->
+        <header class="text-center mb-10">
+            <h1 class="text-4xl sm:text-5xl font-extrabold text-gray-900 mb-2">
+                📘 Từ Điển Anh - Việt
+            </h1>
+            <p class="text-lg text-gray-600">Tra cứu từ vựng, ngữ pháp và phiên âm</p>
+        </header>
+
+        <!-- Search Form -->
+        <!-- Đã thêm position relative vào form để gợi ý nằm trong phạm vi, dễ dàng căn chỉnh -->
+        <form method="GET" id="searchForm" class="mb-10 shadow-xl rounded-full bg-white flex p-1 relative z-20">
+            <input 
+                type="search" 
+                name="word" 
+                id="wordInput"
+                placeholder="Nhập từ cần tra cứu (ví dụ: abandon, ability...)"
+                value="{{ search_word if search_word }}"
+                class="w-full py-4 px-6 text-lg rounded-l-full focus:outline-none border-0 bg-transparent"
+                required
+                autocomplete="off"
+            >
+            <button 
+                type="submit"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-full transition duration-300 flex items-center justify-center m-1 shadow-md"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+            </button>
+            
+            <!-- Container cho gợi ý tự động (Nằm ngoài input và button, nhưng bên trong form để dễ căn chỉnh) -->
+            <!-- Vị trí tuyệt đối so với form cha (relative) -->
+            <div id="suggestionsBox" class="absolute top-full w-[calc(100%-8px)] mt-1 ml-1 bg-white shadow-2xl rounded-xl z-10 hidden border border-gray-200">
+                <!-- Gợi ý sẽ được thêm vào đây bằng JavaScript -->
+            </div>
+        </form>
+
+        <!-- Kết Quả Tìm Kiếm -->
+        <main id="results-container" class="mt-8">
+            {% if search_word and results|length == 0 %}
+                <!-- Không có kết quả -->
+                <div class="text-center p-8 bg-white rounded-xl shadow-lg border-l-4 border-yellow-500">
+                    <p class="text-xl text-gray-700">Không tìm thấy từ <span class="font-bold text-red-500">"{{ search_word }}"</span> nào. 🧐</p>
+                    <p class="text-md text-gray-500 mt-2">Hãy thử tìm kiếm với một từ khác!</p>
+                </div>
+            {% elif results %}
+                <!-- Hiển thị kết quả -->
+                {% for r in results %}
+                <!-- r = [word(0), pronunciation(1), type(2), v2(3), v3(4), ing(5), ed(6), meaning(7), example(8), synonym(9), antonym(10)] -->
+                <div class="word-card p-6 bg-white rounded-2xl shadow-lg mb-6 hover:shadow-xl transition-shadow duration-300 border-l-6 border-blue-600">
+                    
+                    <!-- 1. Từ Vựng & Phiên Âm & Phát âm -->
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="flex flex-col sm:flex-row sm:items-baseline">
+                            <!-- Từ Vựng -->
+                            <h2 class="text-3xl font-extrabold text-gray-800 mr-4 leading-tight">
+                                <span class="{% if r[0]|lower == search_word|lower %}mark{% endif %}">
+                                    {{ r[0] | safe }}
+                                </span>
+                            </h2>
+                            <!-- Phiên Âm -->
+                            {% if r[1] %}
+                                <span class="pronunciation mt-1 sm:mt-0">/{{ r[1] | safe }}/</span>
+                            {% else %}
+                                <span class="pronunciation missing mt-1 sm:mt-0">Thiếu phiên âm</span>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Nút Phát Âm -->
+                        <button class="speak-btn text-blue-600 hover:text-blue-700 text-3xl transition duration-200 p-2 rounded-full hover:bg-gray-100" 
+                                onclick="speakWord('{{ r[0] }}')">
+                            🔊
+                        </button>
+                    </div>
+
+                    <!-- 2. Loại Từ -->
+                    {% if r[2] %}
+                    <p class="text-lg text-blue-600 font-semibold mb-3">
+                        <span class="inline-block bg-blue-100 text-blue-800 text-xs px-3 py-1 rounded-full uppercase font-bold tracking-wider">{{ r[2] }}</span>
+                    </p>
+                    {% endif %}
+
+                    <!-- 3. Các Dạng Khác (Chỉ hiển thị cho động từ, nếu có) -->
+                    {% if r[3] or r[4] or r[5] or r[6] %}
+                    <div class="flex flex-wrap gap-x-4 text-gray-600 text-sm mb-3">
+                        {% if r[3] %}<b>V2:</b> {{ r[3] }} &nbsp;{% endif %}
+                        {% if r[4] %}<b>V3:</b> {{ r[4] }} &nbsp;{% endif %}
+                        {% if r[5] %}<b>V-ing:</b> {{ r[5] }} &nbsp;{% endif %}
+                        {% if r[6] %}<b>V-ed:</b> {{ r[6] }}{% endif %}
+                    </div>
+                    {% endif %}
+                    
+                    <!-- 4. Nghĩa -->
+                    <div class="text-xl font-medium text-gray-800 border-t pt-3 mt-3 border-gray-100">
+                        <span class="text-gray-500 font-bold mr-2">Nghĩa:</span> {{ r[7] | safe }}
+                    </div>
+
+                    <!-- 5. Ví dụ -->
+                    {% if r[8] %}
+                        <div class="example text-gray-600 italic mt-3 text-base">
+                            💬 <span class="font-bold text-gray-700 not-italic">Ví dụ:</span> {{ r[8]|safe }}
+                        </div>
+                    {% endif %}
+
+                    <!-- 6. Từ đồng nghĩa & trái nghĩa -->
+                    <div class="flex flex-wrap gap-4 mt-4">
+                        <div class="synonym bg-green-50 text-green-700 p-3 rounded-xl flex-1 min-w-[250px] shadow-sm">
+                            <span class="font-bold mr-1">🔹 Đồng nghĩa:</span> {{ r[9] if r[9] and r[9] != 'None' else 'Chưa có' }}
+                        </div>
+                        <div class="antonym bg-red-50 text-red-700 p-3 rounded-xl flex-1 min-w-[250px] shadow-sm">
+                            <span class="font-bold mr-1">🔸 Trái nghĩa:</span> {{ r[10] if r[10] and r[10] != 'None' else 'Chưa có' }}
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <!-- Trang mặc định -->
+                <div class="text-center p-8 bg-white rounded-xl shadow-lg border-l-4 border-blue-600">
+                    <p class="text-xl text-gray-700">Chào mừng, hãy nhập từ cần tra cứu vào ô tìm kiếm bên trên! 🚀</p>
+                </div>
+            {% endif %}
+        </main>
+    </div>
+
+<script>
+// Khai báo hàm phát âm
+function speakWord(text) {
+    if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en-US';
+        utterance.rate = 0.9;
+        speechSynthesis.speak(utterance);
+    } else { 
+        console.warn("Trình duyệt không hỗ trợ giọng nói."); 
+    }
+}
+
+const input = document.getElementById('wordInput');
+const suggestionsBox = document.getElementById('suggestionsBox');
+let debounceTimer;
+
+input.addEventListener('input', function() {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+        const term = input.value.trim();
+        if (term.length < 1) { 
+            suggestionsBox.style.display = 'none'; 
+            return; 
+        }
+        
+        // SỬ DỤNG AJAX (fetch) để lấy gợi ý từ Flask
+        fetch(`/autocomplete?term=${term}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data.length > 0) {
+                    // Cập nhật lại HTML của suggestionsBox
+                    suggestionsBox.innerHTML = data.map(word => 
+                        // Sử dụng class Tailwind cho các mục gợi ý
+                        `<div onclick="selectSuggestion('${word.replace(/'/g, "\\'")}')" 
+                             class="px-6 py-3 cursor-pointer text-gray-700 hover:bg-blue-50 transition-colors duration-150 rounded-lg m-1">
+                            ${word}
+                        </div>`
+                    ).join('');
+                    suggestionsBox.style.display = 'block';
+                } else { 
+                    suggestionsBox.style.display = 'none'; 
+                }
+            })
+            .catch(error => {
+                console.error('Lỗi khi fetch autocomplete:', error);
+                suggestionsBox.style.display = 'none';
+            });
+    }, 250); // Debounce 250ms
+});
+
+function selectSuggestion(word) {
+    input.value = word;
+    suggestionsBox.style.display = 'none';
+    // Điều hướng thẳng tới link tra cứu
+    window.location.href = `/?word=${encodeURIComponent(word)}`; 
+}
+
+// 🔗 Click từ trong ví dụ
+document.addEventListener('click', function(e) {
+    // Xử lý link từ trong câu ví dụ
+    if (e.target.tagName === 'A') {
+        // Kiểm tra xem liên kết có phải là link tra từ của chúng ta không (bắt đầu bằng /?word=)
+        const href = e.target.getAttribute('href');
+        if (href && href.startsWith('/?word=')) {
+            e.preventDefault();
+            // Điều hướng thẳng tới link tra cứu
+            window.location.href = href;
+        }
+    }
+    
+    // Đóng box gợi ý khi click ra ngoài
+    const searchForm = document.getElementById('searchForm');
+    if (!searchForm.contains(e.target)) {
+        suggestionsBox.style.display = 'none';
+    }
+});
+
+// Xử lý khi nhấn Enter trên input để đảm bảo gửi form
+input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+        // Ngăn chặn hành vi mặc định và submit form
+        e.preventDefault();
+        document.getElementById('searchForm').submit();
+    }
+});
+
+// Đảm bảo thanh gợi ý không bị lỗi khi resize
+window.addEventListener('resize', () => {
+    if (suggestionsBox.style.display === 'block') {
+        // Khi resize, ẩn đi để tránh hiển thị sai lệch
+        suggestionsBox.style.display = 'none';
+    }
+});
+</script>
+</body>
+</html>
